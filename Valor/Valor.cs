@@ -179,7 +179,7 @@ namespace Valor
             }
 
             // We have everything, fill the list and set it to the army keeper.
-            for (int i = ring6Monsters.Count; i < 8; i++)
+            for (int i = ring6Monsters.Count; i < 7; i++)
             {
                 Monster randomMonster = getAnyNonSpectralMonster();
                 ring6Monsters.Add(randomMonster);
