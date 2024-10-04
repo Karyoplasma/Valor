@@ -132,7 +132,7 @@ namespace Valor
             for (int i = 0; i < 3; i++)
             {
                 self.EndOfTimeMonsters.Add(endgameMonsters[i]);
-                Debug.Log(endgameMonsters[i]);
+                Debug.Log(endgameMonsters[i].name);
             }
         }
 
@@ -185,10 +185,15 @@ namespace Valor
                 ring6Monsters.Add(randomMonster);
             }
             Debug.Log("Keeper Army Monsters:");
-            self.MonsterArmyMonsters.Clear();
-            for (int i = 7; i >= 0; i--)
+            if (ring6Monsters.Count > 7)
             {
-                Monster addMonster = ring6Monsters[UnityEngine.Random.Range(0, i)];
+                Debug.LogWarning("We generated too many Keeper's army monsters. Should never happen.");
+            }
+
+            self.MonsterArmyMonsters.Clear();
+            for (int i = 0; i < 7; i++)
+            {
+                Monster addMonster = ring6Monsters[UnityEngine.Random.Range(0, ring6Monsters.Count)];
                 self.MonsterArmyMonsters.Add(addMonster);
                 Debug.Log(addMonster.name);
                 ring6Monsters.Remove(addMonster);
