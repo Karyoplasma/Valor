@@ -16,4 +16,4 @@ Drop the contents into the Monster Sanctuary folder and start the game once. Exi
 To start a Valor run, select Bravery without Randomizer and start a New Game (New Game+ should work as well, I have not tested it tho). Relics and Permadeath can be chosen freely.
 
 ## Release Page
-https://github.com/Karyoplasma/Valor/releases
+https://github.com/Karyoplasma/Valor/releases/latest
