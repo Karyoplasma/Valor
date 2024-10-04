@@ -317,11 +317,11 @@ namespace Valor
             if (exploreAbilities[3])
             {
                 ring2Areas.Add(8);
-                // if Snowy Peaks was not set yet, it's in this ring
-                if (!ring2Areas.Contains(4))
-                {
-                    ring2Areas.Add(4);
-                }
+            }
+            // if Snowy Peaks was not set yet and it was not visited before, it's in this ring
+            if (!ring2Areas.Contains(4) && monstersArray[4] == null)
+            {
+                ring2Areas.Add(4);
             }
 
             // the only requirement for this ring is a mount, else we are free.
