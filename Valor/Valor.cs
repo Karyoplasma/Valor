@@ -17,10 +17,12 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.1.0";
+        public const string ModVersion = "0.1.1";
 
         // Create a ConfigEntry so we can reference our config option.
-        private ConfigEntry<bool> ValorConfigOption;
+        private ConfigEntry<bool> ValorEnabled;
+        private ConfigEntry<bool> ValorNewGamePlus;
+        private ConfigEntry<int> ValorImprovedSwimming;
         private List<Monster> swimmingMonsters;
         private List<Monster> breakWallMonsters;
         private List<Monster> mountMonsters;
@@ -42,12 +44,25 @@ namespace Valor
         public Valor()
         {
             // Binding a config option, making it actually be registered by BepInEx.
-            ValorConfigOption = Config.Bind(
+            ValorEnabled = Config.Bind(
                 "General", // The category in the config file.
-                "ValorOption", // The name of the option
+                "Enabled", // The name of the option
                 true, // The default value
-                "This is a example option." // The description
+                "Toggle between vanilla Bravery and Valor. Valor is true, Bravery is false." // The description
             );
+            ValorNewGamePlus = Config.Bind(
+                "Progression",
+                "Ignore Spectral ability",
+                false,
+                "Ignore the Explore Ability of your Spectral starter when generating the seed. This is intended for New Game+."
+            );
+            ValorImprovedSwimming = Config.Bind(
+                "Progression",
+                "Guarantee Improved Swimming",
+                0,
+                "Guarantees the generation of an improved swimming monster. 0 = off, 1 = anywhere in the seed, 2 = guaranteed from Caretaker."
+            );
+
             // To modify game functions you can use monomod.
             // This routes the OpenChest function into our function.
             On.GameModeManager.SetupGame += GameModeManager_SetupGame;
@@ -56,7 +71,7 @@ namespace Valor
         public void GameModeManager_SetupGame(On.GameModeManager.orig_SetupGame orig, GameModeManager self)
         {
             // If our config options is true run the code inside.
-            if (ValorConfigOption.Value)
+            if (ValorEnabled.Value)
             {
                 orig(self);
                 if (self.BraveryMode && !self.RandomizerMode)
@@ -77,14 +92,14 @@ namespace Valor
                     blobMonsters = initializeBlobMonstersList();
                     spectralMonsters = initializeSpectralMonstersList();
                     // 0-breakwall, 1-flying, 2-mount, 3-improvedflying, 4-secretvision, 5-grapple, 6-bigrock
-                    // 7-fire, 8-levitate, 9-light, 10-crush, 11-blob
-                    exploreAbilities = new bool[12];
+                    // 7-fire, 8-levitate, 9-light, 10-crush, 11-blob, 12-improvedswimming
+                    exploreAbilities = new bool[13];
                     monstersArray = new Monster[13];
                     chosenMonsters = new List<Monster>();
 
                     Debug.Log("Rerandoming monsters for Valor Mode!");
                     self.BraveryMonsters.Clear();
-                    self.SwimmingMonster = swimmingMonsters[UnityEngine.Random.Range(0, swimmingMonsters.Count)];
+                    self.SwimmingMonster = swimmingMonsters[UnityEngine.Random.Range((ValorImprovedSwimming.Value == 2) ? 1 : 0, swimmingMonsters.Count)];
 
                     Debug.Log("Swimming Monster: " + self.SwimmingMonster.name);
                     GetStartingMonsters(self);
@@ -121,13 +136,21 @@ namespace Valor
             // The monsters in Eternity's End. Anything goes here, even Spectrals!
             List<Monster> endgameMonsters = new List<Monster>();
             
+            // Generate an Improved Swimmer if the user enabled it
+            if (ValorImprovedSwimming.Value == 1 && !exploreAbilities[12])
+            {
+                Monster improvedSwimmer = swimmingMonsters[UnityEngine.Random.Range(1, swimmingMonsters.Count)];
+                endgameMonsters.Add(improvedSwimmer);
+                chosenMonsters.Add(improvedSwimmer);
+            }
 
-            for (int i = 0; i < 3; i++)
+            // Fill the list to contain 3 monsters
+            for (int i = endgameMonsters.Count; i < 3; i++)
             {
                 Monster randomMonster = getAnyMonster();
                 endgameMonsters.Add(randomMonster);
             }
-            Debug.Log("Ring 7 Monsters:");
+            Debug.Log("Eternity's End Monsters:");
             self.EndOfTimeMonsters.Clear();
             for (int i = 0; i < 3; i++)
             {
@@ -143,39 +166,39 @@ namespace Valor
 
             if (!exploreAbilities[7])
             {
-                Debug.Log("We need a fire monster.");
                 Monster fireMonster = getValidMonsterFromList(fireMonsters, spectralMonsters);
                 ring6Monsters.Add(fireMonster);
+                Debug.Log("We need a fire monster: " + fireMonster.name);
             }
             if (!exploreAbilities[9])
             {
-                Debug.Log("We need a light monster.");
                 Monster lightMonster = getValidMonsterFromList(lightMonsters, spectralMonsters);
                 ring6Monsters.Add(lightMonster);
+                Debug.Log("We need a light monster: " + lightMonster.name);
             }
             if (!exploreAbilities[10])
             {
-                Debug.Log("We need a crush monster.");
                 Monster crushMonster = getValidMonsterFromList(crushMonsters, spectralMonsters);
                 ring6Monsters.Add(crushMonster);
+                Debug.Log("We need a crush monster: " + crushMonster.name);
             }
             if (!exploreAbilities[6])
             {
-                Debug.Log("We need a Big Rock monster.");
                 Monster bigRockMonster = getValidMonsterFromList(bigRockMonsters, spectralMonsters);
                 ring6Monsters.Add(bigRockMonster);
+                Debug.Log("We need a Big Rock monster: " + bigRockMonster.name);
             }
             if (!exploreAbilities[8])
             {
-                Debug.Log("We need a levitate monster.");
                 Monster levitateMonster = getValidMonsterFromList(levitateMonsters, spectralMonsters);
                 ring6Monsters.Add(levitateMonster);
+                Debug.Log("We need a levitate monster: " + levitateMonster.name);
             }
             if (!exploreAbilities[11])
             {
-                Debug.Log("We need a blob form monster.");
                 Monster blobMonster = getValidMonsterFromList(blobMonsters, spectralMonsters);
                 ring6Monsters.Add(blobMonster);
+                Debug.Log("We need a blob form monster: " + blobMonster.name);
             }
 
             // We have everything, fill the list and set it to the army keeper.
@@ -235,6 +258,7 @@ namespace Valor
             {
                 Monster secretVisionMonster = getValidMonsterFromList(secretVisionMonsters, spectralMonsters);
                 ring4Monsters.Add(secretVisionMonster);
+                Debug.Log("We need Secret Vision: " + secretVisionMonster.name);
             }
             // fill the rest with random non-spectrals and generate an extra one for Bex
             for (int i = ring4Monsters.Count; i < ring4Areas.Count + 1; i++)
@@ -244,6 +268,7 @@ namespace Valor
             // set the Bex monster and remove it from the list
             Monster bexMonster = ring4Monsters[UnityEngine.Random.Range(0, ring4Monsters.Count)];
             self.BexMonster = bexMonster;
+            Debug.Log("Bex will give us: " + bexMonster.name);
             ring4Monsters.Remove(bexMonster);
             distributeMonstersToAreas(ring4Monsters, ring4Areas);
 
@@ -279,11 +304,13 @@ namespace Valor
             {
                 Monster grappleMonster = getValidMonsterFromList(grappleMonsters, spectralMonsters);
                 ring3Monsters.Add(grappleMonster);
+                Debug.Log("We need Grapple: " + grappleMonster.name);
             }
             if (!exploreAbilities[3])
             {
                 Monster improvedFlyingMonster = getValidMonsterFromList(improvedFlyingMonsters, spectralMonsters);
                 ring3Monsters.Add(improvedFlyingMonster);
+                Debug.Log("We need Improved Flying: " + improvedFlyingMonster.name);
             }
             // fill the rest with random non-spectrals that are not banned
             for (int i = ring3Monsters.Count; i < ring3Areas.Count; i++)
@@ -334,6 +361,7 @@ namespace Valor
             {
                 Monster mountMonster = getValidMonsterFromList(mountMonsters, banList);
                 ring2Monsters.Add(mountMonster);
+                Debug.Log("We need a mount: " + mountMonster.name);
             }
 
             // fill the rest with random non-spectrals that are not banned
@@ -383,9 +411,9 @@ namespace Valor
             // requirements are that we get a flying or a mount monster so we are not stuck
             if (!(exploreAbilities[1] || exploreAbilities[2]))
             {
-                Debug.Log("Need a flying or mount monster.");
                 Monster mountOrFlying = getValidMonsterFromList(mountMonsters.Union(flyingMonsters).Union(improvedFlyingMonsters).ToList(), banList);
                 ring1Monsters.Add(mountOrFlying);
+                Debug.Log("Need a flying or mount monster: " + mountOrFlying.name);
             }
 
             // fill the rest with random non-spectrals that are not banned
@@ -411,9 +439,9 @@ namespace Valor
             // requirements is only to have a monster that can break walls
             if (!exploreAbilities[0])
             {
-                Debug.Log("Need a BreakWall monster!");
                 Monster breakWallMonster = getValidMonsterFromList(breakWallMonsters, banList);
                 ring0Monsters.Add(breakWallMonster);
+                Debug.Log("Need a BreakWall monster: " + breakWallMonster.name);
             }
 
             // fill the rest with random non-spectrals that are not banned
@@ -442,7 +470,11 @@ namespace Valor
             self.FamiliarIndex = UnityEngine.Random.Range(0, 4);
             PlayerController.Instance.Monsters.AddMonsterByPrefab(GameController.Instance.MonsterJournalList[self.FamiliarIndex], EShift.Normal, false, null, false, false);
             chosenMonsters.Add(GameController.Instance.MonsterJournalList[self.FamiliarIndex].GetComponent<Monster>());
-            updateExploreAbilities(GameController.Instance.MonsterJournalList[self.FamiliarIndex].GetComponent<Monster>());
+            // Ignore progression if NewGame+ compatibility option is set
+            if (!ValorNewGamePlus.Value)
+            {
+                updateExploreAbilities(GameController.Instance.MonsterJournalList[self.FamiliarIndex].GetComponent<Monster>());
+            }
             // set follower to your familiar else it sometimes bugs out and doesn't let you name your starters
             PlayerController.Instance.Follower.Monster = PlayerController.Instance.Monsters.Familiar;
             // random 2 different, non-banned monsters
