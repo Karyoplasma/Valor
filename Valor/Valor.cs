@@ -1,11 +1,7 @@
-﻿using System;
+﻿using BepInEx;
+using BepInEx.Configuration;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BepInEx;
-using BepInEx.Configuration;
-using MonoMod;
 using UnityEngine;
 
 namespace Valor
@@ -26,6 +22,7 @@ namespace Valor
         private ConfigEntry<bool> ValorAllowSpectrals;
         private ConfigEntry<bool> ValorAllowBard;
         private ConfigEntry<bool> ValorAllowDuplicates;
+        private ConfigEntry<int> ValorStartingDifficulty;
         private List<Monster> allMonsters;
         private List<Monster> swimmingMonsters;
         private List<Monster> breakWallMonsters;
@@ -52,7 +49,7 @@ namespace Valor
                 "General", // The category in the config file.
                 "Enabled", // The name of the option
                 true, // The default value
-                "Toggle between vanilla Bravery and Valor. Valor is true, Bravery is false." // The description
+                "Toggle between vanilla Bravery and Valor.\nValor is true, Bravery is false." // The description
             );
             ValorNewGamePlus = Config.Bind(
                 "Progression",
@@ -64,7 +61,7 @@ namespace Valor
                 "Progression",
                 "GuaranteeImprovedSwimming",
                 0,
-                "Guarantees the generation of an improved swimming monster. 0 = off, 1 = anywhere in the seed, 2 = guaranteed from Caretaker."
+                "Guarantees the generation of an improved swimming monster.\n0 = off, 1 = anywhere in the seed, 2 = guaranteed from Caretaker."
             );
             ValorAllowBard = Config.Bind(
                 "Extras",
@@ -83,6 +80,12 @@ namespace Valor
                 "AllowDuplicates",
                 false,
                 "Allows duplicate monsters."
+            );
+            ValorStartingDifficulty = Config.Bind(
+                "Extras",
+                "StartingDifficulty",
+                2,
+                "Set the ingame difficulty at the start.\n0 = Easy, 1 = Normal, 2 = Master."
             );
             // To modify game functions you can use monomod.
             // This routes the OpenChest function into our function.
@@ -119,7 +122,7 @@ namespace Valor
                     monstersArray = new Monster[13];
                     chosenMonsters = new List<Monster>();
 
-                    Debug.Log("Rerandoming monsters for Valor Mode!");
+                    Debug.Log("Rerandoming monsters for Valor Mode! Pool is " + allMonsters.Count + " monsters." );
                     self.BraveryMonsters.Clear();
                     self.SwimmingMonster = swimmingMonsters[UnityEngine.Random.Range((ValorImprovedSwimming.Value == 2) ? 1 : 0, swimmingMonsters.Count)];
 
@@ -138,8 +141,9 @@ namespace Valor
                     {
                         self.BraveryMonsters.Add(self.MonsterAreas[i], monstersArray[i]);
                     }
+                    Debug.Log("Pool is " + allMonsters.Count + " monsters.");
+                    PlayerController.Instance.Difficulty = GetStartingDifficulty();
                 }
-
             }
         }
 
@@ -171,7 +175,7 @@ namespace Valor
                 activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<Monster> endgameMonsters = new List<Monster>();
-            
+
             // Generate an Improved Swimmer if the user enabled it
             if (ValorImprovedSwimming.Value == 1 && !exploreAbilities[12])
             {
@@ -340,7 +344,7 @@ namespace Valor
             }
             List<int> ring3Areas = new List<int>() { 6, 9 };
             List<Monster> ring3Monsters = new List<Monster>();
-            
+
             // check for improved flying
             if (exploreAbilities[3])
             {
@@ -611,7 +615,7 @@ namespace Valor
                 }
             }
         }
-           
+
         private Monster getMonsterByIndex(int index)
         {
             return GameController.Instance.MonsterJournalList[index].GetComponent<Monster>();
@@ -619,11 +623,6 @@ namespace Valor
 
         private List<Monster> getValidMonsterList(List<Monster> monsterPool, List<MonsterBanType> activeBans)
         {
-            if (activeBans == null)
-            {
-                return monsterPool;
-            } 
-
             List<Monster> validMonsters = new List<Monster>(monsterPool);
             foreach (MonsterBanType banType in activeBans)
             {
@@ -715,12 +714,12 @@ namespace Valor
             {
                 Debug.Log("Adding " + monster.name + " to " + getAreaByIndex(index));
             }
-          
+
             monstersArray[index] = monster;
             updateExploreAbilities(monster);
         }
 
-        private String getAreaByIndex(int index)
+        private string getAreaByIndex(int index)
         {
             switch (index)
             {
@@ -753,6 +752,24 @@ namespace Valor
                 default:
                     return "Area not found!";
             }
+        }
+
+        private EDifficulty GetStartingDifficulty()
+        {
+            if (ValorStartingDifficulty == null || ValorStartingDifficulty.Value < 0 || ValorStartingDifficulty.Value > 2)
+            {
+                return EDifficulty.Master;
+            }
+            switch (ValorStartingDifficulty.Value)
+            {
+                case 0:
+                    return EDifficulty.Easy;
+                case 1:
+                    return EDifficulty.Normal;
+                case 2:
+                    return EDifficulty.Master;
+            }
+            return EDifficulty.Master;
         }
 
         // initialize list methods
@@ -1002,6 +1019,3 @@ namespace Valor
         SWIMMING,
     }
 }
-
-
-
