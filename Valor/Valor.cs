@@ -13,7 +13,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.2.0";
+        public const string ModVersion = "0.2.1";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
