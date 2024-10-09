@@ -13,7 +13,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.2.1";
+        public const string ModVersion = "0.2.2";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -128,12 +128,12 @@ namespace Valor
 
                     Debug.Log("Swimming Monster: " + self.SwimmingMonster.name);
                     GetStartingMonsters(self);
-                    GetRing0Monsters(self);
-                    GetRing1Monsters(self);
+                    GetRing0Monsters();
+                    GetRing1Monsters();
                     GetRing2Monsters(self);
-                    GetRing3Monsters(self);
+                    GetRing3Monsters();
                     GetRing4Monsters(self);
-                    GetRing5Monsters(self);
+                    GetRing5Monsters();
                     GetKeepersArmyMonsters(self);
                     GetEndOfTimeMonsters(self);
                     GetTradeMonster(self);
@@ -181,6 +181,7 @@ namespace Valor
             {
                 Monster improvedSwimmer = swimmingMonsters[UnityEngine.Random.Range(1, swimmingMonsters.Count)];
                 endgameMonsters.Add(improvedSwimmer);
+                updateExploreAbilities(improvedSwimmer);
                 chosenMonsters.Add(improvedSwimmer);
             }
 
@@ -264,7 +265,7 @@ namespace Valor
             }
         }
 
-        private void GetRing5Monsters(GameModeManager self)
+        private void GetRing5Monsters()
         {
             // Ring 5 is the DLC and Blob Burg. No requirements.
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
@@ -328,7 +329,7 @@ namespace Valor
             logExplorationAbilityArray();
         }
 
-        private void GetRing3Monsters(GameModeManager self)
+        private void GetRing3Monsters()
         {
             // Ring 3 core is Horizon Beach and Underworld. There is a high chance we can access Magma Chamber before that, if not, it's in this ring.
             // Mystical Workshop might be accessible too if we randomed an Improved Flyer.
@@ -398,6 +399,9 @@ namespace Valor
             List<int> ring2Areas = new List<int>() { 5 };
             List<Monster> ring2Monsters = new List<Monster>();
 
+            // we can add the explore ability of the swimming monster here since we are supposed to beat Sun Palace in this ring
+            updateExploreAbilities(self.SwimmingMonster);
+
             // if we got a mount we have to check whether we got it before last ring or not
             if (exploreAbilities[2])
             {
@@ -437,7 +441,7 @@ namespace Valor
             logExplorationAbilityArray();
         }
 
-        private void GetRing1Monsters(GameModeManager self)
+        private void GetRing1Monsters()
         {
             // Ring 1 is complicated. The core is Stronghold Dungeon and Ancient Woods, however we might be able to access
             // Snowy Peaks and Magma Chamber. In this case we have to add them later on. Only swimming monsters and spectrals
@@ -492,7 +496,7 @@ namespace Valor
             logExplorationAbilityArray();
         }
 
-        private void GetRing0Monsters(GameModeManager self)
+        private void GetRing0Monsters()
         {
             // ring 0 is always Mountain Path and Blue Cave. No Swimming or Improved Flying allowed.
             List<MonsterBanType> activeBans = new List<MonsterBanType>() { MonsterBanType.SWIMMING, MonsterBanType.IMPROVED_FLYING };
@@ -597,6 +601,7 @@ namespace Valor
 
             Monster chosenMonster = validMonsters[UnityEngine.Random.Range(0, validMonsters.Count)];
             chosenMonsters.Add(chosenMonster);
+            updateExploreAbilities(chosenMonster);
             return chosenMonster;
         }
 
@@ -609,6 +614,7 @@ namespace Valor
                 Monster monster = validMonsters[UnityEngine.Random.Range(0, validMonsters.Count)];
                 chosenMonsters.Add(monster);
                 monsterList.Add(monster);
+                updateExploreAbilities(monster);
                 if (!ValorAllowDuplicates.Value)
                 {
                     validMonsters.Remove(monster);
@@ -716,7 +722,6 @@ namespace Valor
             }
 
             monstersArray[index] = monster;
-            updateExploreAbilities(monster);
         }
 
         private string getAreaByIndex(int index)
@@ -997,6 +1002,7 @@ namespace Valor
             if (ValorAllowBard.Value)
             {
                 allMonsters.Add(getMonsterByIndex(110));
+                Debug.Log("Adding Bard to monster pool!");
             }
             return allMonsters;
         }
