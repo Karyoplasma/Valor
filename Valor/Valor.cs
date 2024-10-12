@@ -1,7 +1,9 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 
 namespace Valor
@@ -13,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.2.2";
+        public const string ModVersion = "0.2.3";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -23,6 +25,7 @@ namespace Valor
         private ConfigEntry<bool> ValorAllowBard;
         private ConfigEntry<bool> ValorAllowDuplicates;
         private ConfigEntry<int> ValorStartingDifficulty;
+        private ConfigEntry<bool> ValorGenerateLog;
         private List<Monster> allMonsters;
         private List<Monster> swimmingMonsters;
         private List<Monster> breakWallMonsters;
@@ -41,6 +44,7 @@ namespace Valor
         private List<Monster> chosenMonsters;
         private bool[] exploreAbilities;
         private Monster[] monstersArray;
+        private StringBuilder logBuilder;
         // This is the first code that runs when your mod gets loaded.
         public Valor()
         {
@@ -87,6 +91,12 @@ namespace Valor
                 2,
                 "Set the ingame difficulty at the start.\n0 = Easy, 1 = Normal, 2 = Master."
             );
+            ValorGenerateLog = Config.Bind(
+                "Extras",
+                "GenerateLog",
+                true,
+                "Generate a log detailing the intended progression and monsters found in the seed."
+            );
             // To modify game functions you can use monomod.
             // This routes the OpenChest function into our function.
             On.GameModeManager.SetupGame += GameModeManager_SetupGame;
@@ -121,6 +131,8 @@ namespace Valor
                     exploreAbilities = new bool[13];
                     monstersArray = new Monster[13];
                     chosenMonsters = new List<Monster>();
+                    logBuilder = new StringBuilder();
+                    buildLogStartingConfiguration(self.Seed);
 
                     Debug.Log("Rerandoming monsters for Valor Mode! Pool is " + allMonsters.Count + " monsters." );
                     self.BraveryMonsters.Clear();
@@ -137,12 +149,21 @@ namespace Valor
                     GetKeepersArmyMonsters(self);
                     GetEndOfTimeMonsters(self);
                     GetTradeMonster(self);
+                    BuildLogStarters();
                     for (int i = 0; i < 13; i++)
                     {
                         self.BraveryMonsters.Add(self.MonsterAreas[i], monstersArray[i]);
+                        logBuilder.AppendLine(string.Format("{0}: {1}", getAreaByIndex(i), monstersArray[i].name));
                     }
+                    BuildLogExtraMonsters(self);
                     Debug.Log("Pool is " + allMonsters.Count + " monsters.");
+                    // set difficulty
                     PlayerController.Instance.Difficulty = GetStartingDifficulty();
+                    // print log to file
+                    if (ValorGenerateLog.Value)
+                    {
+                        saveLogToFile(Path.Combine(Paths.BepInExRootPath, "ValorLogs", string.Format("Seed {0}.txt", self.Seed)));
+                    }
                 }
             }
         }
@@ -163,7 +184,7 @@ namespace Valor
             Monster randomMonster = getMonsterFromPool(allMonsters, activeBans);
             self.CryomancerMonster = randomMonster;
             self.CryomancerRequiredMonster = obtainedMonster;
-            Debug.Log("Lady Stasis will trade our " + obtainedMonster + " for " + randomMonster + ". This is untested and might break the playthrough if done too early.");
+            Debug.Log("Lady Stasis will trade our " + obtainedMonster + " for " + randomMonster + ". This is untested and might break the playthrough if done too early.");           
         }
 
         private void GetEndOfTimeMonsters(GameModeManager self)
@@ -183,6 +204,7 @@ namespace Valor
                 endgameMonsters.Add(improvedSwimmer);
                 updateExploreAbilities(improvedSwimmer);
                 chosenMonsters.Add(improvedSwimmer);
+                buildLogForcedProgression("Improved Swimming", improvedSwimmer);
             }
 
             // Fill the list to contain 3 monsters
@@ -215,36 +237,42 @@ namespace Valor
                 Monster fireMonster = getMonsterFromPool(fireMonsters, activeBans);
                 ring6Monsters.Add(fireMonster);
                 Debug.Log("We need a fire monster: " + fireMonster.name);
+                buildLogForcedProgression("Fire", fireMonster);
             }
             if (!exploreAbilities[9])
             {
                 Monster lightMonster = getMonsterFromPool(lightMonsters, activeBans);
                 ring6Monsters.Add(lightMonster);
                 Debug.Log("We need a light monster: " + lightMonster.name);
+                buildLogForcedProgression("Light", lightMonster);
             }
             if (!exploreAbilities[10])
             {
                 Monster crushMonster = getMonsterFromPool(crushMonsters, activeBans);
                 ring6Monsters.Add(crushMonster);
                 Debug.Log("We need a crush monster: " + crushMonster.name);
+                buildLogForcedProgression("Crush", crushMonster);
             }
             if (!exploreAbilities[6])
             {
                 Monster bigRockMonster = getMonsterFromPool(bigRockMonsters, activeBans);
                 ring6Monsters.Add(bigRockMonster);
                 Debug.Log("We need a Big Rock monster: " + bigRockMonster.name);
+                buildLogForcedProgression("Big Rock", bigRockMonster);
             }
             if (!exploreAbilities[8])
             {
                 Monster levitateMonster = getMonsterFromPool(levitateMonsters, activeBans);
                 ring6Monsters.Add(levitateMonster);
                 Debug.Log("We need a levitate monster: " + levitateMonster.name);
+                buildLogForcedProgression("Levitate", levitateMonster);
             }
             if (!exploreAbilities[11])
             {
                 Monster blobMonster = getMonsterFromPool(blobMonsters, activeBans);
                 ring6Monsters.Add(blobMonster);
                 Debug.Log("We need a blob form monster: " + blobMonster.name);
+                buildLogForcedProgression("Blob Form", blobMonster);
             }
 
             // We have everything, fill the list and set it to the army keeper.
@@ -315,6 +343,7 @@ namespace Valor
                 Monster secretVisionMonster = getMonsterFromPool(secretVisionMonsters, activeBans);
                 ring4Monsters.Add(secretVisionMonster);
                 Debug.Log("We need Secret Vision: " + secretVisionMonster.name);
+                buildLogForcedProgression("Secret Vision", secretVisionMonster);
             }
             // fill the rest with random non-spectrals and generate an extra one for Bex
             fillListWithMonsters(activeBans, ring4Monsters, ring4Areas.Count + 1);
@@ -367,12 +396,14 @@ namespace Valor
                 Monster grappleMonster = getMonsterFromPool(grappleMonsters, activeBans);
                 ring3Monsters.Add(grappleMonster);
                 Debug.Log("We need Grapple: " + grappleMonster.name);
+                buildLogForcedProgression("Grapple", grappleMonster);
             }
             if (!exploreAbilities[3])
             {
                 Monster improvedFlyingMonster = getMonsterFromPool(improvedFlyingMonsters, activeBans);
                 ring3Monsters.Add(improvedFlyingMonster);
                 Debug.Log("We need Improved Flying: " + improvedFlyingMonster.name);
+                buildLogForcedProgression("Improved Flying", improvedFlyingMonster);
             }
             // fill the rest with random non-spectrals that are not banned
             fillListWithMonsters(activeBans, ring3Monsters, ring3Areas.Count);
@@ -431,6 +462,7 @@ namespace Valor
                 Monster mountMonster = getMonsterFromPool(mountMonsters, activeBans);
                 ring2Monsters.Add(mountMonster);
                 Debug.Log("We need a mount: " + mountMonster.name);
+                buildLogForcedProgression("Mount", mountMonster);
             }
 
             // fill the rest with random monsters that are not banned
@@ -486,6 +518,7 @@ namespace Valor
                 Monster mountOrFlying = getMonsterFromPool(mountMonsters.Union(flyingMonsters).Union(improvedFlyingMonsters).ToList(), activeBans);
                 ring1Monsters.Add(mountOrFlying);
                 Debug.Log("Need a flying or mount monster: " + mountOrFlying.name);
+                buildLogForcedProgression("MountOrFlying", mountOrFlying);
             }
 
             // fill the rest with random monsters that are not banned
@@ -517,6 +550,7 @@ namespace Valor
                 Monster breakWallMonster = getMonsterFromPool(breakWallMonsters, activeBans);
                 ring0Monsters.Add(breakWallMonster);
                 Debug.Log("Need a BreakWall monster: " + breakWallMonster.name);
+                buildLogForcedProgression("BreakWall", breakWallMonster);
             }
 
             // fill the rest with randoms and distribute them throughout the ring
@@ -714,13 +748,12 @@ namespace Valor
         {
             if (monstersArray[index] != null)
             {
-                Debug.LogWarning("Overwriting monster in area " + getAreaByIndex(index));
+                Debug.LogWarning("Overwriting monster in area " + getAreaByIndex(index) + "!");
             }
             else
             {
-                Debug.Log("Adding " + monster.name + " to " + getAreaByIndex(index));
+                Debug.Log("Adding " + monster.name + " to " + getAreaByIndex(index) + "!");
             }
-
             monstersArray[index] = monster;
         }
 
@@ -729,33 +762,33 @@ namespace Valor
             switch (index)
             {
                 case 0:
-                    return "Mountain Path!";
+                    return "Mountain Path";
                 case 1:
-                    return "Blue Cave!";
+                    return "Blue Cave";
                 case 2:
-                    return "Stronghold Dungeon!";
+                    return "Stronghold Dungeon";
                 case 3:
-                    return "Ancient Woods!";
+                    return "Ancient Woods";
                 case 4:
-                    return "Snowy Peaks!";
+                    return "Snowy Peaks";
                 case 5:
-                    return "Sun Palace!";
+                    return "Sun Palace";
                 case 6:
-                    return "Horizon Beach!";
+                    return "Horizon Beach";
                 case 7:
-                    return "Magma Chamber!";
+                    return "Magma Chamber";
                 case 8:
-                    return "Mystical Workshop!";
+                    return "Mystical Workshop";
                 case 9:
-                    return "Underworld!";
+                    return "Underworld";
                 case 10:
-                    return "Abandoned Tower!";
+                    return "Abandoned Tower";
                 case 11:
-                    return "Blob Burg!";
+                    return "Blob Burg";
                 case 12:
-                    return "Forgotten World!";
+                    return "Forgotten World";
                 default:
-                    return "Area not found!";
+                    return "Area not found";
             }
         }
 
@@ -777,6 +810,55 @@ namespace Valor
             return EDifficulty.Master;
         }
 
+        // Seed generation log methods
+        private void buildLogStartingConfiguration(int seed)
+        {
+            logBuilder.AppendLine("Seed: " + seed);
+            logBuilder.AppendLine("Configuration:");
+            logBuilder.AppendLine(string.Format("AllowBard={0}; AllowSpectrals={1}; AllowDuplicates={2};", ValorAllowBard.Value, ValorAllowSpectrals.Value, ValorAllowDuplicates.Value));
+            logBuilder.AppendLine(string.Format("ImprovedSwimming={0}; NewGamePlus={1}", ValorImprovedSwimming.Value, ValorNewGamePlus.Value));
+            logBuilder.AppendLine();
+        }
+
+        private void buildLogForcedProgression(string progression, Monster monster)
+        {
+            logBuilder.AppendLine(string.Format("[Forced {0} monster: {1}]", progression, monster.name));
+        }
+
+        private void saveLogToFile(string filePath)
+        {
+            string directory = Path.GetDirectoryName(filePath);
+
+            // Create directory if it doesn't exist
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory); 
+            }
+            File.WriteAllText(filePath, logBuilder.ToString());
+        }
+
+        private void BuildLogStarters()
+        {
+            logBuilder.AppendLine();
+            logBuilder.AppendLine("Familiar: " + chosenMonsters[0].name);
+            logBuilder.AppendLine("Starter 1: " + chosenMonsters[1].name);
+            logBuilder.AppendLine("Starter 2: " + chosenMonsters[2].name);
+        }
+        
+        private void BuildLogExtraMonsters(GameModeManager self)
+        {
+            logBuilder.AppendLine("Caretaker: " + self.SwimmingMonster.name);
+            logBuilder.AppendLine("Bex: " + self.BexMonster.name);
+            for (int i = 0; i < 7; i++)
+            {
+                logBuilder.AppendLine(string.Format("Keeper's Army {0}: {1}", i + 1, self.MonsterArmyMonsters[i].name));
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                logBuilder.AppendLine(string.Format("Eternity's End {0}: {1}", i + 1, self.EndOfTimeMonsters[i].name));
+            }
+            logBuilder.AppendLine(string.Format("Lady Stasis trade: {0} for {1}", self.CryomancerRequiredMonster.name, self.CryomancerMonster.name));
+        }
         // initialize list methods
         private List<Monster> initializeSpectralMonstersList()
         {
