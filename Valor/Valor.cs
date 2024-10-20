@@ -15,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.2.3";
+        public const string ModVersion = "0.2.4";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -26,6 +26,7 @@ namespace Valor
         private ConfigEntry<bool> ValorAllowDuplicates;
         private ConfigEntry<int> ValorStartingDifficulty;
         private ConfigEntry<bool> ValorGenerateLog;
+        private ConfigEntry<int> ValorChooseFamiliar;
         private List<Monster> allMonsters;
         private List<Monster> swimmingMonsters;
         private List<Monster> breakWallMonsters;
@@ -97,6 +98,12 @@ namespace Valor
                 true,
                 "Generate a log detailing the intended progression and monsters found in the seed."
             );
+            ValorChooseFamiliar = Config.Bind(
+                "Progression",
+                "ChooseFamiliar",
+                -1,
+                "Set to select your Familiar.\n0 = Wolf, 1 = Toad, 2 = Eagle, 3 = Lion\nanything else = random"
+            );
             // To modify game functions you can use monomod.
             // This routes the OpenChest function into our function.
             On.GameModeManager.SetupGame += GameModeManager_SetupGame;
@@ -137,7 +144,8 @@ namespace Valor
                     Debug.Log("Rerandoming monsters for Valor Mode! Pool is " + allMonsters.Count + " monsters." );
                     self.BraveryMonsters.Clear();
                     self.SwimmingMonster = swimmingMonsters[UnityEngine.Random.Range((ValorImprovedSwimming.Value == 2) ? 1 : 0, swimmingMonsters.Count)];
-
+                    chosenMonsters.Add(self.SwimmingMonster);
+                    
                     Debug.Log("Swimming Monster: " + self.SwimmingMonster.name);
                     GetStartingMonsters(self);
                     GetRing0Monsters();
@@ -568,11 +576,26 @@ namespace Valor
 
             // no Swimming or Improved Flying monsters at the start
             List<MonsterBanType> activeBans = new List<MonsterBanType>() { MonsterBanType.SWIMMING, MonsterBanType.IMPROVED_FLYING };
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
+            }
+            if (!ValorAllowSpectrals.Value)
+            {
+                activeBans.Add(MonsterBanType.SPECTRAL);
+            }
             List<Monster> monsterPool = getValidMonsterList(allMonsters, activeBans);
 
             // remove old monsters and get new ones
             PlayerController.Instance.Monsters.Clear();
-            self.FamiliarIndex = UnityEngine.Random.Range(0, 4);
+            
+            if (ValorChooseFamiliar.Value < 0 || ValorChooseFamiliar.Value > 3)
+            {
+                self.FamiliarIndex = UnityEngine.Random.Range(0, 4);
+            } else
+            {
+                self.FamiliarIndex = ValorChooseFamiliar.Value;
+            }
             PlayerController.Instance.Monsters.AddMonsterByPrefab(GameController.Instance.MonsterJournalList[self.FamiliarIndex], EShift.Normal, false, null, false, false);
             chosenMonsters.Add(GameController.Instance.MonsterJournalList[self.FamiliarIndex].GetComponent<Monster>());
             // Ignore progression if NewGame+ compatibility option is set
@@ -816,7 +839,7 @@ namespace Valor
             logBuilder.AppendLine("Seed: " + seed);
             logBuilder.AppendLine("Configuration:");
             logBuilder.AppendLine(string.Format("AllowBard={0}; AllowSpectrals={1}; AllowDuplicates={2};", ValorAllowBard.Value, ValorAllowSpectrals.Value, ValorAllowDuplicates.Value));
-            logBuilder.AppendLine(string.Format("ImprovedSwimming={0}; NewGamePlus={1}", ValorImprovedSwimming.Value, ValorNewGamePlus.Value));
+            logBuilder.AppendLine(string.Format("ImprovedSwimming={0}; NewGamePlus={1}; ChooseFamiliar={2}", ValorImprovedSwimming.Value, ValorNewGamePlus.Value, ValorChooseFamiliar.Value));
             logBuilder.AppendLine();
         }
 
@@ -840,9 +863,9 @@ namespace Valor
         private void BuildLogStarters()
         {
             logBuilder.AppendLine();
-            logBuilder.AppendLine("Familiar: " + chosenMonsters[0].name);
-            logBuilder.AppendLine("Starter 1: " + chosenMonsters[1].name);
-            logBuilder.AppendLine("Starter 2: " + chosenMonsters[2].name);
+            logBuilder.AppendLine("Familiar: " + chosenMonsters[1].name);
+            logBuilder.AppendLine("Starter 1: " + chosenMonsters[2].name);
+            logBuilder.AppendLine("Starter 2: " + chosenMonsters[3].name);
         }
         
         private void BuildLogExtraMonsters(GameModeManager self)
