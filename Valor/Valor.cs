@@ -15,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.2.4";
+        public const string ModVersion = "0.2.5";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -60,7 +60,7 @@ namespace Valor
                 "Progression",
                 "IgnoreSpectralAbility",
                 false,
-                "Ignore the Explore Ability of your Spectral starter when generating the seed. This is intended for New Game+."
+                "Ignore the Explore Ability of your Spectral starter when generating the seed. This is intended for New Game+.\nLegacy setting. Probably unnecessary, but it generates different monsters, so I left it in"
             );
             ValorImprovedSwimming = Config.Bind(
                 "Progression",
@@ -72,7 +72,7 @@ namespace Valor
                 "Extras",
                 "AllowBard",
                 false,
-                "Allows Bard to be chosen as a random monster. Receiving one before the Forgotten World DLC will break the quest there."
+                "Allows Bard to be chosen as a random monster.\nReceiving one before the Forgotten World DLC will break the quest there."
             );
             ValorAllowSpectrals = Config.Bind(
                 "Extras",
@@ -105,8 +105,19 @@ namespace Valor
                 "Set to select your Familiar.\n0 = Wolf, 1 = Toad, 2 = Eagle, 3 = Lion\nanything else = random"
             );
             // To modify game functions you can use monomod.
-            // This routes the OpenChest function into our function.
+            // This routes the SetupGame function into our function.
             On.GameModeManager.SetupGame += GameModeManager_SetupGame;
+            On.NewGameMenu.Open += NewGameMenu_Open;
+        }
+
+        public void NewGameMenu_Open(On.NewGameMenu.orig_Open orig, NewGameMenu self, int index, bool resetSettings)
+        {
+            if (ValorEnabled.Value)
+            {
+                self.RandomizerItem.SetDisabled(true);
+                self.BraveryModeDescription = "- Valor functions the same way as Bravery, but the monster chests contain monsters from a wider pool.";
+            }           
+            orig(self, index, resetSettings);
         }
 
         public void GameModeManager_SetupGame(On.GameModeManager.orig_SetupGame orig, GameModeManager self)
@@ -173,6 +184,10 @@ namespace Valor
                         saveLogToFile(Path.Combine(Paths.BepInExRootPath, "ValorLogs", string.Format("Seed {0}.txt", self.Seed)));
                     }
                 }
+            } 
+            else
+            {
+                orig(self);
             }
         }
 
@@ -716,7 +731,7 @@ namespace Valor
         private void updateExploreAbilities(Monster monster)
         {
             // 0-breakwall, 1-flying, 2-mount, 3-improvedflying, 4-secretvision, 5-grapple, 6-bigrock
-            // 7-fire, 8-levitate, 9-light, 10-crush, 11-blob
+            // 7-fire, 8-levitate, 9-light, 10-crush, 11-blob, 12-improvedswimming
             if (breakWallMonsters.Contains(monster))
             {
                 exploreAbilities[0] = true;
@@ -764,6 +779,10 @@ namespace Valor
             if (blobMonsters.Contains(monster))
             {
                 exploreAbilities[11] = true;
+            }
+            if (swimmingMonsters.Skip(1).Contains(monster))
+            {
+                exploreAbilities[12] = true;
             }
         }
 
@@ -836,6 +855,7 @@ namespace Valor
         // Seed generation log methods
         private void buildLogStartingConfiguration(int seed)
         {
+            logBuilder.AppendLine("Valor version: " + ModVersion);
             logBuilder.AppendLine("Seed: " + seed);
             logBuilder.AppendLine("Configuration:");
             logBuilder.AppendLine(string.Format("AllowBard={0}; AllowSpectrals={1}; AllowDuplicates={2};", ValorAllowBard.Value, ValorAllowSpectrals.Value, ValorAllowDuplicates.Value));
