@@ -15,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.2.5";
+        public const string ModVersion = "0.3.0";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -43,6 +43,7 @@ namespace Valor
         private List<Monster> blobMonsters;
         private List<Monster> spectralMonsters;
         private List<Monster> chosenMonsters;
+        private List<Monster> possibleTrades;
         private bool[] exploreAbilities;
         private Monster[] monstersArray;
         private StringBuilder logBuilder;
@@ -105,7 +106,7 @@ namespace Valor
                 "Set to select your Familiar.\n0 = Wolf, 1 = Toad, 2 = Eagle, 3 = Lion\nanything else = random"
             );
             // To modify game functions you can use monomod.
-            // This routes the SetupGame function into our function.
+            // This routes the SetupGame and Open method into our methods.
             On.GameModeManager.SetupGame += GameModeManager_SetupGame;
             On.NewGameMenu.Open += NewGameMenu_Open;
         }
@@ -122,10 +123,10 @@ namespace Valor
 
         public void GameModeManager_SetupGame(On.GameModeManager.orig_SetupGame orig, GameModeManager self)
         {
+            orig(self);
             // If our config options is true run the code inside.
             if (ValorEnabled.Value)
             {
-                orig(self);
                 if (self.BraveryMode && !self.RandomizerMode)
                 {
                     // initialize lists
@@ -149,6 +150,7 @@ namespace Valor
                     exploreAbilities = new bool[13];
                     monstersArray = new Monster[13];
                     chosenMonsters = new List<Monster>();
+                    possibleTrades = new List<Monster>();
                     logBuilder = new StringBuilder();
                     buildLogStartingConfiguration(self.Seed);
 
@@ -185,10 +187,6 @@ namespace Valor
                     }
                 }
             } 
-            else
-            {
-                orig(self);
-            }
         }
 
         private void GetTradeMonster(GameModeManager self)
@@ -202,8 +200,19 @@ namespace Valor
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
             }
-            // beta might break
-            Monster obtainedMonster = chosenMonsters[UnityEngine.Random.Range(0, chosenMonsters.Count)];
+            // only basic logic implemented, be careful
+            if (possibleTrades.Count == 0)
+            {
+                Debug.LogError("The list of possible trades is empty. This should never happen.");
+            } else
+            {
+                Debug.Log("Possible Trades:");
+                foreach (Monster monster in possibleTrades)
+                {
+                    Debug.Log(monster.name);
+                }
+            }
+            Monster obtainedMonster = possibleTrades[UnityEngine.Random.Range(0, possibleTrades.Count)];
             Monster randomMonster = getMonsterFromPool(allMonsters, activeBans);
             self.CryomancerMonster = randomMonster;
             self.CryomancerRequiredMonster = obtainedMonster;
@@ -297,7 +306,13 @@ namespace Valor
                 Debug.Log("We need a blob form monster: " + blobMonster.name);
                 buildLogForcedProgression("Blob Form", blobMonster);
             }
-
+            if (!exploreAbilities[5])
+            {
+                Monster grappleMonster = getMonsterFromPool(grappleMonsters, activeBans);
+                ring6Monsters.Add(grappleMonster);
+                Debug.Log("We need Grapple: " + grappleMonster.name);
+                buildLogForcedProgression("Grapple", grappleMonster);
+            }
             // We have everything, fill the list and set it to the army keeper.
             fillListWithMonsters(activeBans, ring6Monsters, 7);
             Debug.Log("Keeper Army Monsters:");
@@ -413,14 +428,7 @@ namespace Valor
                 ring3Areas.Add(7);
             }
 
-            // we need Grapple and Improved Flying
-            if (!exploreAbilities[5])
-            {
-                Monster grappleMonster = getMonsterFromPool(grappleMonsters, activeBans);
-                ring3Monsters.Add(grappleMonster);
-                Debug.Log("We need Grapple: " + grappleMonster.name);
-                buildLogForcedProgression("Grapple", grappleMonster);
-            }
+            // we need Improved Flying
             if (!exploreAbilities[3])
             {
                 Monster improvedFlyingMonster = getMonsterFromPool(improvedFlyingMonsters, activeBans);
@@ -730,59 +738,81 @@ namespace Valor
 
         private void updateExploreAbilities(Monster monster)
         {
+            // keep track of monsters with required explore abilities for the cryomancer
+            bool isRequired = false;
+
             // 0-breakwall, 1-flying, 2-mount, 3-improvedflying, 4-secretvision, 5-grapple, 6-bigrock
             // 7-fire, 8-levitate, 9-light, 10-crush, 11-blob, 12-improvedswimming
-            if (breakWallMonsters.Contains(monster))
+            if (!exploreAbilities[0] && breakWallMonsters.Contains(monster))
             {
                 exploreAbilities[0] = true;
+                isRequired = true;
             }
-            if (flyingMonsters.Contains(monster))
+            if (!exploreAbilities[1] && flyingMonsters.Contains(monster))
             {
                 exploreAbilities[1] = true;
+                isRequired = true;
             }
-            if (mountMonsters.Contains(monster))
+            if (!exploreAbilities[2] && mountMonsters.Contains(monster))
             {
                 exploreAbilities[2] = true;
+                isRequired = true;
             }
-            if (improvedFlyingMonsters.Contains(monster))
+            if (!exploreAbilities[3] && improvedFlyingMonsters.Contains(monster))
             {
                 exploreAbilities[3] = true;
+                isRequired = true;
             }
-            if (secretVisionMonsters.Contains(monster))
+            if (!exploreAbilities[4] && secretVisionMonsters.Contains(monster))
             {
                 exploreAbilities[4] = true;
+                isRequired = true;
             }
-            if (grappleMonsters.Contains(monster))
+            if (!exploreAbilities[5] && grappleMonsters.Contains(monster))
             {
                 exploreAbilities[5] = true;
+                isRequired = true;
             }
-            if (bigRockMonsters.Contains(monster))
+            if (!exploreAbilities[6] && bigRockMonsters.Contains(monster))
             {
                 exploreAbilities[6] = true;
+                isRequired = true;
             }
-            if (fireMonsters.Contains(monster))
+            if (!exploreAbilities[7] && fireMonsters.Contains(monster))
             {
                 exploreAbilities[7] = true;
+                isRequired = true;
             }
-            if (levitateMonsters.Contains(monster))
+            if (!exploreAbilities[8] && levitateMonsters.Contains(monster))
             {
                 exploreAbilities[8] = true;
+                isRequired = true;
             }
-            if (lightMonsters.Contains(monster))
+            if (!exploreAbilities[9] && lightMonsters.Contains(monster))
             {
                 exploreAbilities[9] = true;
+                isRequired = true;
             }
-            if (crushMonsters.Contains(monster))
+            if (!exploreAbilities[10] && crushMonsters.Contains(monster))
             {
                 exploreAbilities[10] = true;
+                isRequired = true;
             }
-            if (blobMonsters.Contains(monster))
+            if (!exploreAbilities[11] && blobMonsters.Contains(monster))
             {
                 exploreAbilities[11] = true;
+                isRequired = true;
             }
-            if (swimmingMonsters.Skip(1).Contains(monster))
+            if (!exploreAbilities[12] && swimmingMonsters.Skip(1).Contains(monster))
             {
                 exploreAbilities[12] = true;
+                isRequired = true;
+            }
+
+            // monster is not required, so it can be traded away
+            if (!isRequired)
+            {
+                possibleTrades.Add(monster);
             }
         }
 
@@ -846,10 +876,9 @@ namespace Valor
                     return EDifficulty.Easy;
                 case 1:
                     return EDifficulty.Normal;
-                case 2:
+                default:
                     return EDifficulty.Master;
             }
-            return EDifficulty.Master;
         }
 
         // Seed generation log methods
