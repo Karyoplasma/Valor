@@ -15,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.3.0";
+        public const string ModVersion = "0.3.1";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -27,6 +27,7 @@ namespace Valor
         private ConfigEntry<int> ValorStartingDifficulty;
         private ConfigEntry<bool> ValorGenerateLog;
         private ConfigEntry<int> ValorChooseFamiliar;
+        private ConfigEntry<bool> ValorDisableZoneRestrictions;
         private List<Monster> allMonsters;
         private List<Monster> swimmingMonsters;
         private List<Monster> breakWallMonsters;
@@ -59,9 +60,9 @@ namespace Valor
             );
             ValorNewGamePlus = Config.Bind(
                 "Progression",
-                "IgnoreSpectralAbility",
+                "IgnoreFamilarAbility",
                 false,
-                "Ignore the Explore Ability of your Spectral starter when generating the seed. This is intended for New Game+.\nLegacy setting. Probably unnecessary, but it generates different monsters, so I left it in"
+                "Ignore the Explore Ability of your Spectral familiar when generating the seed. This is intended for New Game+.\nLegacy setting. Probably unnecessary, but it generates different monsters, so I left it in"
             );
             ValorImprovedSwimming = Config.Bind(
                 "Progression",
@@ -70,19 +71,19 @@ namespace Valor
                 "Guarantees the generation of an improved swimming monster.\n0 = off, 1 = anywhere in the seed, 2 = guaranteed from Caretaker."
             );
             ValorAllowBard = Config.Bind(
-                "Extras",
+                "Bans",
                 "AllowBard",
                 false,
                 "Allows Bard to be chosen as a random monster.\nReceiving one before the Forgotten World DLC will break the quest there."
             );
             ValorAllowSpectrals = Config.Bind(
-                "Extras",
+                "Bans",
                 "AllowSpectrals",
                 false,
                 "Allows Spectrals to be chosen as random monsters."
             );
             ValorAllowDuplicates = Config.Bind(
-                "Extras",
+                "Bans",
                 "AllowDuplicates",
                 false,
                 "Allows duplicate monsters."
@@ -100,10 +101,16 @@ namespace Valor
                 "Generate a log detailing the intended progression and monsters found in the seed."
             );
             ValorChooseFamiliar = Config.Bind(
-                "Progression",
+                "Extras",
                 "ChooseFamiliar",
                 -1,
                 "Set to select your Familiar.\n0 = Wolf, 1 = Toad, 2 = Eagle, 3 = Lion\nanything else = random"
+            );
+            ValorDisableZoneRestrictions = Config.Bind(
+                "Bans",
+                "DisableZoneRestrictions",
+                false,
+                "If set to true, the logic will ignore all zone-wide monster bans like Swimmers or Improved Flyers in the starting zones.\nNote: Unbans Spectrals and Bard as well since they are essentially zone restrictions. Duplicates are still banned unless toggled."
             );
             // To modify game functions you can use monomod.
             // This routes the SetupGame and Open method into our methods.
@@ -192,13 +199,17 @@ namespace Valor
         private void GetTradeMonster(GameModeManager self)
         {
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             // only basic logic implemented, be careful
             if (possibleTrades.Count == 0)
@@ -254,13 +265,17 @@ namespace Valor
         {
             // The goal here is to fulfill all exploration ability needs to be able to beat all champions.
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<Monster> ring6Monsters = new List<Monster>();
 
@@ -335,13 +350,17 @@ namespace Valor
         {
             // Ring 5 is the DLC and Blob Burg. No requirements.
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<int> ring5Areas = new List<int>() { 11, 12 };
             List<Monster> ring5Monsters = new List<Monster>();
@@ -358,13 +377,17 @@ namespace Valor
             // Ring 4 core is the Abandoned Tower and the Bex monster. Mystical Workshop might be in this ring as well, if we needed an Improved Flyer until last
             // ring. Once again, only Spectrals are banned, so we don't need a ban list.
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<int> ring4Areas = new List<int>() { 10 };
             List<Monster> ring4Monsters = new List<Monster>();
@@ -402,13 +425,17 @@ namespace Valor
             // Mystical Workshop might be accessible too if we randomed an Improved Flyer.
             // Banned are only Spectrals
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<int> ring3Areas = new List<int>() { 6, 9 };
             List<Monster> ring3Monsters = new List<Monster>();
@@ -450,13 +477,17 @@ namespace Valor
             // Ring 2 core is only Sun Palace. The rest depends whether we got a mount or a flying monster in the previous ring.
             // Banned are Swimming and Spectral monsters.
             List<MonsterBanType> activeBans = new List<MonsterBanType>() { MonsterBanType.SWIMMING };
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<int> ring2Areas = new List<int>() { 5 };
             List<Monster> ring2Monsters = new List<Monster>();
@@ -510,13 +541,17 @@ namespace Valor
             // Snowy Peaks and Magma Chamber. In this case we have to add them later on. Only swimming monsters and spectrals
             // are banned here.
             List<MonsterBanType> activeBans = new List<MonsterBanType>() { MonsterBanType.SWIMMING };
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<int> ring1Areas = new List<int>() { 2, 3 };
             List<Monster> ring1Monsters = new List<Monster>();
@@ -564,13 +599,17 @@ namespace Valor
         {
             // ring 0 is always Mountain Path and Blue Cave. No Swimming or Improved Flying allowed.
             List<MonsterBanType> activeBans = new List<MonsterBanType>() { MonsterBanType.SWIMMING, MonsterBanType.IMPROVED_FLYING };
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
+            }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
             }
             List<Monster> ring0Monsters = new List<Monster>();
             List<int> ring0Areas = new List<int>() { 0, 1 };
@@ -599,14 +638,19 @@ namespace Valor
 
             // no Swimming or Improved Flying monsters at the start
             List<MonsterBanType> activeBans = new List<MonsterBanType>() { MonsterBanType.SWIMMING, MonsterBanType.IMPROVED_FLYING };
-            if (!ValorAllowDuplicates.Value)
-            {
-                activeBans.Add(MonsterBanType.DUPLICATE);
-            }
             if (!ValorAllowSpectrals.Value)
             {
                 activeBans.Add(MonsterBanType.SPECTRAL);
             }
+            if (ValorDisableZoneRestrictions.Value)
+            {
+                activeBans.Clear();
+            }
+            if (!ValorAllowDuplicates.Value)
+            {
+                activeBans.Add(MonsterBanType.DUPLICATE);
+            }
+            
             List<Monster> monsterPool = getValidMonsterList(allMonsters, activeBans);
 
             // remove old monsters and get new ones
@@ -636,10 +680,10 @@ namespace Valor
             // random 2 different, non-banned monsters
             for (int i = 0; i < 2; i++)
             {
-                GameObject gameObject = GameController.Instance.MonsterJournalList[UnityEngine.Random.Range(ValorAllowSpectrals.Value ? 0 : 4, ValorAllowBard.Value ? GameController.Instance.MonsterJournalList.Count : GameController.Instance.MonsterJournalList.Count - 1)];
+                GameObject gameObject = GameController.Instance.MonsterJournalList[UnityEngine.Random.Range((ValorAllowSpectrals.Value || ValorDisableZoneRestrictions.Value) ? 0 : 4, (ValorAllowBard.Value || ValorDisableZoneRestrictions.Value) ? GameController.Instance.MonsterJournalList.Count : GameController.Instance.MonsterJournalList.Count - 1)];
                 while (!monsterPool.Contains(gameObject.GetComponent<Monster>()))
                 {
-                    gameObject = GameController.Instance.MonsterJournalList[UnityEngine.Random.Range(ValorAllowSpectrals.Value ? 0 : 4, ValorAllowBard.Value ? GameController.Instance.MonsterJournalList.Count : GameController.Instance.MonsterJournalList.Count - 1)];
+                    gameObject = GameController.Instance.MonsterJournalList[UnityEngine.Random.Range((ValorAllowSpectrals.Value || ValorDisableZoneRestrictions.Value) ? 0 : 4, (ValorAllowBard.Value || ValorDisableZoneRestrictions.Value) ? GameController.Instance.MonsterJournalList.Count : GameController.Instance.MonsterJournalList.Count - 1)];
                 };
                 PlayerController.Instance.Monsters.AddMonsterByPrefab(gameObject, EShift.Normal, false, null, false, false);
                 chosenMonsters.Add(gameObject.GetComponent<Monster>());
@@ -887,7 +931,7 @@ namespace Valor
             logBuilder.AppendLine("Valor version: " + ModVersion);
             logBuilder.AppendLine("Seed: " + seed);
             logBuilder.AppendLine("Configuration:");
-            logBuilder.AppendLine(string.Format("AllowBard={0}; AllowSpectrals={1}; AllowDuplicates={2};", ValorAllowBard.Value, ValorAllowSpectrals.Value, ValorAllowDuplicates.Value));
+            logBuilder.AppendLine(string.Format("AllowBard={0}; AllowSpectrals={1}; AllowDuplicates={2}; DisableZoneRestrictions={3}", ValorAllowBard.Value, ValorAllowSpectrals.Value, ValorAllowDuplicates.Value, ValorDisableZoneRestrictions.Value));
             logBuilder.AppendLine(string.Format("ImprovedSwimming={0}; NewGamePlus={1}; ChooseFamiliar={2}", ValorImprovedSwimming.Value, ValorNewGamePlus.Value, ValorChooseFamiliar.Value));
             logBuilder.AppendLine();
         }
@@ -1153,7 +1197,7 @@ namespace Valor
                 allMonsters.Add(getMonsterByIndex(i));
             }
 
-            if (ValorAllowBard.Value)
+            if (ValorAllowBard.Value || ValorDisableZoneRestrictions.Value)
             {
                 allMonsters.Add(getMonsterByIndex(110));
                 Debug.Log("Adding Bard to monster pool!");
