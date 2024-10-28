@@ -15,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.3.1";
+        public const string ModVersion = "0.3.2";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -374,7 +374,7 @@ namespace Valor
 
         private void GetRing4Monsters(GameModeManager self)
         {
-            // Ring 4 core is the Abandoned Tower and the Bex monster. Mystical Workshop might be in this ring as well, if we needed an Improved Flyer until last
+            // Ring 4 core is the Underworld and Abandoned Tower and the Bex monster. Mystical Workshop might be in this ring as well, if we needed an Improved Flyer until last
             // ring. Once again, only Spectrals are banned, so we don't need a ban list.
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
             if (!ValorAllowSpectrals.Value)
@@ -389,7 +389,7 @@ namespace Valor
             {
                 activeBans.Add(MonsterBanType.DUPLICATE);
             }
-            List<int> ring4Areas = new List<int>() { 10 };
+            List<int> ring4Areas = new List<int>() { 9, 10 };
             List<Monster> ring4Monsters = new List<Monster>();
 
             // check whether we have been to Mystical Workshop, if not, it's in this ring.
@@ -406,7 +406,7 @@ namespace Valor
                 Debug.Log("We need Secret Vision: " + secretVisionMonster.name);
                 buildLogForcedProgression("Secret Vision", secretVisionMonster);
             }
-            // fill the rest with random non-spectrals and generate an extra one for Bex
+            // fill the rest with random monsters and generate an extra one for Bex
             fillListWithMonsters(activeBans, ring4Monsters, ring4Areas.Count + 1);
             // set the Bex monster and remove it from the list
             Monster bexMonster = ring4Monsters[UnityEngine.Random.Range(0, ring4Monsters.Count)];
@@ -421,7 +421,7 @@ namespace Valor
 
         private void GetRing3Monsters()
         {
-            // Ring 3 core is Horizon Beach and Underworld. There is a high chance we can access Magma Chamber before that, if not, it's in this ring.
+            // Ring 3 core is Horizon Beach. There is a high chance we can access Magma Chamber before that, if not, it's in this ring.
             // Mystical Workshop might be accessible too if we randomed an Improved Flyer.
             // Banned are only Spectrals
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
@@ -437,7 +437,7 @@ namespace Valor
             {
                 activeBans.Add(MonsterBanType.DUPLICATE);
             }
-            List<int> ring3Areas = new List<int>() { 6, 9 };
+            List<int> ring3Areas = new List<int>() { 6 };
             List<Monster> ring3Monsters = new List<Monster>();
 
             // check for improved flying
@@ -463,7 +463,7 @@ namespace Valor
                 Debug.Log("We need Improved Flying: " + improvedFlyingMonster.name);
                 buildLogForcedProgression("Improved Flying", improvedFlyingMonster);
             }
-            // fill the rest with random non-spectrals that are not banned
+            // fill the rest with random monsters that are not banned
             fillListWithMonsters(activeBans, ring3Monsters, ring3Areas.Count);
             distributeMonstersToAreas(ring3Monsters, ring3Areas);
 
