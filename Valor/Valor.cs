@@ -15,7 +15,7 @@ namespace Valor
         // Some constants holding the stuff we put in BepInPlugin, we just made these seperate variables so that we can more easily read them.
         public const string ModGUID = "karyoplasma.valor";
         public const string ModName = "Valor";
-        public const string ModVersion = "0.3.2";
+        public const string ModVersion = "0.3.3";
 
         // Create a ConfigEntry so we can reference our config option.
         private ConfigEntry<bool> ValorEnabled;
@@ -171,8 +171,8 @@ namespace Valor
                     GetRing0Monsters();
                     GetRing1Monsters();
                     GetRing2Monsters(self);
-                    GetRing3Monsters();
-                    GetRing4Monsters(self);
+                    GetRing3Monsters(self);
+                    GetRing4Monsters();
                     GetRing5Monsters();
                     GetKeepersArmyMonsters(self);
                     GetEndOfTimeMonsters(self);
@@ -372,9 +372,9 @@ namespace Valor
             logExplorationAbilityArray();
         }
 
-        private void GetRing4Monsters(GameModeManager self)
+        private void GetRing4Monsters()
         {
-            // Ring 4 core is the Underworld and Abandoned Tower and the Bex monster. Mystical Workshop might be in this ring as well, if we needed an Improved Flyer until last
+            // Ring 4 core is the Underworld and Abandoned Tower. Mystical Workshop might be in this ring as well, if we needed an Improved Flyer until last
             // ring. Once again, only Spectrals are banned, so we don't need a ban list.
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
             if (!ValorAllowSpectrals.Value)
@@ -406,22 +406,18 @@ namespace Valor
                 Debug.Log("We need Secret Vision: " + secretVisionMonster.name);
                 buildLogForcedProgression("Secret Vision", secretVisionMonster);
             }
-            // fill the rest with random monsters and generate an extra one for Bex
-            fillListWithMonsters(activeBans, ring4Monsters, ring4Areas.Count + 1);
-            // set the Bex monster and remove it from the list
-            Monster bexMonster = ring4Monsters[UnityEngine.Random.Range(0, ring4Monsters.Count)];
-            self.BexMonster = bexMonster;
-            Debug.Log("Bex will give us: " + bexMonster.name);
-            ring4Monsters.Remove(bexMonster);
+
+            fillListWithMonsters(activeBans, ring4Monsters, ring4Areas.Count);
             distributeMonstersToAreas(ring4Monsters, ring4Areas);
 
             // debug stuff
             logExplorationAbilityArray();
         }
 
-        private void GetRing3Monsters()
+        private void GetRing3Monsters(GameModeManager self)
         {
-            // Ring 3 core is Horizon Beach. There is a high chance we can access Magma Chamber before that, if not, it's in this ring.
+            // Ring 3 core is Horizon Beach and Bex. There is a high chance we can access Magma Chamber monster chest before that,
+            // if not, it's in this ring.
             // Mystical Workshop might be accessible too if we randomed an Improved Flyer.
             // Banned are only Spectrals
             List<MonsterBanType> activeBans = new List<MonsterBanType>();
@@ -463,8 +459,15 @@ namespace Valor
                 Debug.Log("We need Improved Flying: " + improvedFlyingMonster.name);
                 buildLogForcedProgression("Improved Flying", improvedFlyingMonster);
             }
-            // fill the rest with random monsters that are not banned
-            fillListWithMonsters(activeBans, ring3Monsters, ring3Areas.Count);
+            // fill the rest with random monsters that are not banned plus an extra one for Bex
+            fillListWithMonsters(activeBans, ring3Monsters, ring3Areas.Count + 1);
+
+            // set the Bex monster and remove it from the list
+            Monster bexMonster = ring3Monsters[UnityEngine.Random.Range(0, ring3Monsters.Count)];
+            self.BexMonster = bexMonster;
+            Debug.Log("Bex will give us: " + bexMonster.name);
+            ring3Monsters.Remove(bexMonster);
+
             distributeMonstersToAreas(ring3Monsters, ring3Areas);
 
             // debug stuff
